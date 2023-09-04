@@ -1,9 +1,11 @@
 [tool.poetry]
 name = "cold-postman"
-version = "0.1.0"
+version = "0.1.2"
 description = "A postman helps you to send cold mails"
 authors = ["thisishugow <59921505+thisishugow@users.noreply.github.com>"]
+license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/thisishugow/cold_postman"
 packages = [{include = "cold_postman"}]
 
 [tool.poetry.dependencies]
