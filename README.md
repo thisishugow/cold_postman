@@ -1,3 +1,4 @@
+# cold-postman  
 **cold_postman** is a marketing tool to help users write cold mails in markdown and send them via a manageable csv file.
 
 
