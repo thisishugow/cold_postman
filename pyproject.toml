@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "cold-postman"
+version = "0.1.0"
+description = "A postman helps you to send cold mails"
+authors = ["thisishugow <59921505+thisishugow@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "cold_postman"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyyaml = "^6.0.1"
+pandas = "^2.1.0"
+pendulum = "^2.1.2"
+markdown2 = "^2.4.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
