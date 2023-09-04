@@ -38,7 +38,8 @@ def main():
     parser.add_argument('-s','--signature', help='(Filepath) The signature in markdown', required=True)
     parser.add_argument('-a','--attach', help='(Filepath) The signature in markdown', required=False)
     args = parser.parse_args()
-    config = read_conf(args.config)
+    config_fn, _ = os.path.splitext(args.config)
+    config = read_conf(config_fn)
     with open(args.message, 'r') as f:
         message = f.read()
     with open(args.signature, 'r') as f:
