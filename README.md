@@ -15,7 +15,7 @@ python -m cold_postman init config
 ```
 #### About `config.yaml`
 ```yaml
-batch_num: 10 # mails sents per batch
+batch_num: 10 # mails sent per batch
 password: ''  # password 
 smtp_port: 587 # port
 smtp_server: smtp.example.com # smtp server
@@ -49,7 +49,7 @@ Command to start the sending task:
 #   -s SIGNATURE, --signature SIGNATURE
 #                         (Filepath) The signature in markdown
 #   -a ATTACH, --attach ATTACH
-#                         (Filepath) The signature in markdown. 
+#                         (Filepath) The attachment. 
 python -m cold_postman -m message.md -t 'Subject of the Mail' -s signature.md -a attachment.zip
 ```  
 

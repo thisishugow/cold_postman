@@ -36,7 +36,7 @@ def main():
     parser.add_argument('-m','--message', help='(Filepath) The email content in markdown.', required=True)
     parser.add_argument('-t','--title', help='(str) The email title', required=True)
     parser.add_argument('-s','--signature', help='(Filepath) The signature in markdown', required=True)
-    parser.add_argument('-a','--attach', help='(Filepath) The signature in markdown', required=False)
+    parser.add_argument('-a','--attach', help='(Filepath) The attachment', required=False)
     args = parser.parse_args()
     config_fn, _ = os.path.splitext(args.config)
     config = read_conf(config_fn)

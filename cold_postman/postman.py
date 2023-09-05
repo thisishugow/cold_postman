@@ -23,6 +23,12 @@ INTERVAL:float = 0.2
 
 class ColdPostman:
     def __init__(self, *, crm_db_path: os.PathLike, config: dict = None) -> None:
+        """_summary_
+
+        Args:
+            crm_db_path (os.PathLike): Control table (accepts .csv, sqlite3)
+            config (dict, optional): config. Defaults to None.
+        """
         self.title: str = None
         self.md_content: str = None
         self.config: dict = config
@@ -179,7 +185,15 @@ class ColdPostman:
         init_crmdb(fn, extn.strip('.'), df)
 
 
-def extract_images_from_md(md) -> dict:
+def extract_images_from_md(md:str) -> dict:
+    """Extract all images and their cids and return as a dict.  
+
+    Args:
+        md (str): the markdown string
+
+    Returns:
+        dict: the key-value pair of cid and and img url. Example: {'cid_1':'https:www.example.com/img1.png'}
+    """
     d = {}
     pattern = r"!\[(.*?)\]\((.*?)\)"
     matches = re.findall(pattern, md)
@@ -189,6 +203,15 @@ def extract_images_from_md(md) -> dict:
 
 
 def url_to_cid(url: str, cid: str):
+    """Register the image to MIMEImage
+
+    Args:
+        url (str): path of image
+        cid (str): cid of image
+
+    Returns:
+        tuple: (cir<str>, url<str>, <MIMEImage>)
+    """
     with open(url, "rb") as f:
         msgImage = MIMEImage(f.read())
         # Define the image's ID as referenced above
