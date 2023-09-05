@@ -1,9 +1,10 @@
 from typing import Literal, Union
-import yaml, json
+import yaml, json, logging
 import os
 import pandas as pd
 from pandas.core.frame import DataFrame
 import csv, sqlite3
+log = logging.getLogger()
 
 CONF_TEMPLATE = {
     'smtp_server':'smtp.example.org',
@@ -65,7 +66,10 @@ def init_crmdb(fp:os.PathLike='cold_postman_db',astype:Literal['csv', 'sqlite']=
         fp (os.PathLike, optional): file path. Defaults to 'cold_postman_db'.
         astype (Literal[&#39;csv&#39;, &#39;sqlite&#39;], optional): save type. Defaults to 'csv'.
     """
-    if not len(df): 
+    is_update_df = False if df is None else True
+    if is_update_df:
+        log.warning('Update the existing db.') 
+    else:
         d = {
             'first_name':['Joe',],
             'last_name':['Wayne',],
@@ -77,13 +81,13 @@ def init_crmdb(fp:os.PathLike='cold_postman_db',astype:Literal['csv', 'sqlite']=
         }
     dest_fp = f"{fp}.{astype}"
     if astype=='csv':
-        if len(df):
+        if is_update_df:
             df.to_csv(dest_fp, index=False, quotechar='"', quoting=csv.QUOTE_ALL)
         else:
             pd.DataFrame(d).to_csv(dest_fp, index=False, quotechar='"', quoting=csv.QUOTE_ALL)
     else:
         con = sqlite3.connect(dest_fp)
-        if len(df):
+        if is_update_df:
             df.to_sql('CRM', index=False, con=con, if_exists='replace')
         else:
             pd.DataFrame(d).to_sql('CRM', index=False, con=con, if_exists='append')

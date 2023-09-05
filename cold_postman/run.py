@@ -48,7 +48,8 @@ def main():
     cp.set_md_content(message)
     cp.set_signature(signature)
     cp.set_title(args.title)
-    cp.set_attach(args.attach)
+    if args.attach:
+        cp.set_attach(args.attach)
     cp.run()
 
 if __name__ == '__main__':

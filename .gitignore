@@ -3,3 +3,4 @@ __pycache__/
 .DS_Store
 *.whl
 *.tar.gz
+tasks/
