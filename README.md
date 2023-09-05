@@ -19,7 +19,7 @@ batch_num: 10 # mails sent per batch
 password: ''  # password 
 smtp_port: 587 # port
 smtp_server: smtp.example.com # smtp server
-user: 'example#example.com' # user mail
+user: 'example@example.com' # user mail
 from: 'Mr.Example' 
 ```
 #### About `control csv`
