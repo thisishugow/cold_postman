@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cold-postman"
-version = "0.1.4"
+version = "0.1.5"
 description = "A postman helps you to send cold mails"
 authors = ["thisishugow <59921505+thisishugow@users.noreply.github.com>"]
 license = "MIT"
