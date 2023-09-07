@@ -20,6 +20,7 @@ log = logging.getLogger()
 
 REST_SEC:int = 10
 INTERVAL:float = 0.2
+VERBOSE = False
 
 class ColdPostman:
     def __init__(self, *, crm_db_path: os.PathLike, config: dict = None) -> None:
@@ -87,8 +88,10 @@ class ColdPostman:
         smtp = smtplib.SMTP(self.config["smtp_server"], self.config["smtp_port"])
         if smtp.ehlo()[0] != 250:
             raise Exception(f"SMTP Server responsed code: {smtp.ehlo()[0] }")
+        log.info(f"""Connected successfully. Login with user: {self.config['user']}""")
         smtp.starttls()
         smtp.login(self.config["user"], self.config["password"])
+        log.info(f"""Login successfully.""")
         rest_sec: int = REST_SEC
         batch_cnt: int = 0
         update_states: list = []
@@ -127,10 +130,15 @@ class ColdPostman:
                     add_file = MIMEBase('application', "octet-stream")
                     add_file.set_payload(fp.read())
                 encoders.encode_base64(add_file)
-                add_file.add_header('Content-Disposition', 'attachment', filename=file)
+                add_file.add_header('Content-Disposition', 'attachment', filename=os.path.basename(file))
                 self.msg_root.attach(add_file)
             self.msg_root['To'] = email_addr
-            smtp.sendmail(self.config["user"], email_addr, self.msg_root.as_string())
+            try:
+                smtp.sendmail(self.config["user"], email_addr, self.msg_root.as_string())
+            except Exception as e:
+                log.info(f"""Failed on '{name}'-'{email_addr}'.""")
+                log.error(e, exc_info=VERBOSE)
+                continue
             batch_cnt += 1
             update_states.append((i, pendulum.now()))
             log.info(f"""Sent to '{name}'-'{email_addr}' successfully.""")
