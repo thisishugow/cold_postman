@@ -18,9 +18,9 @@ from cold_postman import init_crmdb
 
 log = logging.getLogger()
 
-REST_SEC:int = 10
-INTERVAL:float = 0.2
-VERBOSE = False
+INTERVAL: float = 0.2
+VERBOSE: bool = False
+
 
 class ColdPostman:
     def __init__(self, *, crm_db_path: os.PathLike, config: dict = None) -> None:
@@ -36,9 +36,11 @@ class ColdPostman:
         self.crm_db_path: os.PathLike = crm_db_path
         self.crm_db: DataFrame = self._read_crm(crm_db_path)
         self.rtf: str = None
-        self.attachments:list = []
+        self.attachments: list = []
         self.signature: str = None
-        self.from_ = config['from']
+        self.from_ = config["from"]
+        self.enable_unsubscribe = True
+        self.batch_interval = 10
 
     def set_title(self, title: str):
         """set the mail title
@@ -47,9 +49,19 @@ class ColdPostman:
             title (str): mail title
         """
         self.title = title
-        
 
-    def set_signature(self, signature:str):
+    def set_unsubscribe(self, enable: bool = True):
+        """set if allow recipients to unsubscribe.
+        A unsubscribe link will be added to the tail of the mail
+        , which recipents can click and send a mail with a subject, "Unsubscribe", and
+        message, "I'd like to unsubscribe."
+
+        Args:
+            enable (bool): [True, False], default=True.
+        """
+        self.enable_unsubscribe = enable
+
+    def set_signature(self, signature: str):
         """set the mail signature
 
         Args:
@@ -65,26 +77,29 @@ class ColdPostman:
             md_content (str): the content in markdown.
         """
         self.md_content = md_content
-        
-    def set_from_(self, alias:str):
+
+    def set_from_(self, alias: str):
         """Set the sendor alias
 
         Args:
-            alias (str): sendor alias. 
+            alias (str): sendor alias.
         """
         self.from_ = alias
-    
-    def set_attach(self, files:list | str):
+
+    def set_attach(self, files: list | str):
         if type(files) == str:
-            files = [files,]
+            files = [
+                files,
+            ]
         self.attachments = files
 
     def run(self):
         """start to send mail."""
-
         df: DataFrame = self.crm_db
         receivers = df[df["enabled"] == 1][["first_name", "last_name", "email"]]
-        log.info(f"""Start to connect to: {self.config["smtp_server"]}:{self.config["smtp_port"]}""")
+        log.info(
+            f"""Start to connect to: {self.config["smtp_server"]}:{self.config["smtp_port"]}"""
+        )
         smtp = smtplib.SMTP(self.config["smtp_server"], self.config["smtp_port"])
         if smtp.ehlo()[0] != 250:
             raise Exception(f"SMTP Server responsed code: {smtp.ehlo()[0] }")
@@ -92,13 +107,12 @@ class ColdPostman:
         smtp.starttls()
         smtp.login(self.config["user"], self.config["password"])
         log.info(f"""Login successfully.""")
-        rest_sec: int = REST_SEC
         batch_cnt: int = 0
         update_states: list = []
         rtf: str = md(self.md_content) + self.signature
         image_dict = extract_images_from_md(self.md_content + self._md_signature)
         log.debug(image_dict)
-        image_cids:list = []
+        image_cids: list = []
         for cid, url in image_dict.items():
             tmp = url_to_cid(url, cid)
             image_cids.append(tmp)
@@ -106,16 +120,40 @@ class ColdPostman:
             _cid, _url, _ = j
             rtf = rtf.replace(_url, f"""cid:{_cid}""")
 
+        attachments: list = []
+        for file in self.attachments:
+            with open(file, "rb") as fp:
+                add_file = MIMEBase("application", "octet-stream")
+                add_file.set_payload(fp.read())
+            encoders.encode_base64(add_file)
+            add_file.add_header(
+                "Content-Disposition", "attachment", filename=os.path.basename(file)
+            )
+            attachments.append(add_file)
+
         # Start sending task.
         for i, row in receivers.iterrows():
             self.msg_root: MIMEMultipart = MIMEMultipart()
-            self.msg_root['Subject'] = self.title
-            self.msg_root['From'] = self.from_
+            self.msg_root["Subject"] = self.title
+            self.msg_root["From"] = self.from_
             self.rtf = rtf
             first_name, last_name, email_addr = row
             name = f"{first_name} {last_name}"
-            _rtf: str = f"<br>Hi {name},<br><br>" + self.rtf 
+            _rtf: str = f"<br>Hi {name},<br><br>" + self.rtf
             log.debug(_rtf)
+            # Set the unsubscribe link.
+            if self.enable_unsubscribe:
+                _domain = "www." + re.sub(r".+@", "", self.config["user"])
+                self.msg_root.add_header("List-Unsubscribe", f"<{_domain}>")
+                self.msg_root.add_header(
+                    "List-Unsubscribe-Post", f"List-Unsubscribe=One-Click"
+                )
+                _rtf += f"""<br<br>To unsubscribe, click on the following link:
+                            <a style="color:#8B8C89" href="
+                            {self.config['unsubscribe']['link']}?
+                            subject={self.config['unsubscribe']['subject']}
+                            &body={self.config['unsubscribe']['message']}">
+                            <i>Unsubscribe</i></a><br>"""
             msg_text = MIMEText(_rtf, "html")
             self.msg_root.attach(msg_text)
 
@@ -123,18 +161,19 @@ class ColdPostman:
             for j in image_cids:
                 _, _, img = j
                 self.msg_root.attach(img)
-            
+
             # Attach files
-            for file in self.attachments:
-                with open(file, 'rb') as fp:
-                    add_file = MIMEBase('application', "octet-stream")
-                    add_file.set_payload(fp.read())
-                encoders.encode_base64(add_file)
-                add_file.add_header('Content-Disposition', 'attachment', filename=os.path.basename(file))
+            for add_file in attachments:
                 self.msg_root.attach(add_file)
-            self.msg_root['To'] = email_addr
+
+            self.msg_root["To"] = email_addr
+            self.msg_root[
+                "Reply-To"
+            ] = f"""{self.config['from']} <{self.config['user']}>"""
             try:
-                smtp.sendmail(self.config["user"], email_addr, self.msg_root.as_string())
+                smtp.sendmail(
+                    self.config["user"], email_addr, self.msg_root.as_string()
+                )
             except Exception as e:
                 log.info(f"""Failed on '{name}'-'{email_addr}'.""")
                 log.error(e, exc_info=VERBOSE)
@@ -143,8 +182,8 @@ class ColdPostman:
             update_states.append((i, pendulum.now()))
             log.info(f"""Sent to '{name}'-'{email_addr}' successfully.""")
             sleep(INTERVAL)  # rest for avoiding to be detected as DDos
-            if batch_cnt >= self.config['batch_num']:
-                sleep(rest_sec)  # rest for avoiding to be detected as DDos
+            if batch_cnt >= self.config["batch_num"]:
+                sleep(self.batch_interval)  # rest for avoiding to be detected as DDos
         smtp.close()
         self._update_crm(updates=update_states)
 
@@ -190,11 +229,11 @@ class ColdPostman:
             idx, update_dtt = i
             df.at[idx, "last_sent"] = update_dtt
         fn, extn = os.path.splitext(self.crm_db_path)
-        init_crmdb(fn, extn.strip('.'), df)
+        init_crmdb(fn, extn.strip("."), df)
 
 
-def extract_images_from_md(md:str) -> dict:
-    """Extract all images and their cids and return as a dict.  
+def extract_images_from_md(md: str) -> dict:
+    """Extract all images and their cids and return as a dict.
 
     Args:
         md (str): the markdown string

@@ -13,6 +13,11 @@ CONF_TEMPLATE = {
     'password':'Pas$w0rd',
     'batch_num':10,
     'from':'',
+    'unsubscribe':{
+        'link':'',
+        'subject':'Unsubscribe',
+        'message':"I'd like to unsubscribe.",
+    }
 }
 
     
@@ -35,6 +40,11 @@ def read_conf(fp:Union[str, bytes, os.PathLike], format:Literal['yaml', 'json']=
             'password':'Pas$w0rd',
             'batch_num':100,
             'from':'',
+            'unsubscribe':{
+                'link':'',
+                'subject':'Unsubscribe',
+                'message':"I'd like to unsubscribe.",
+            }
         }
         ```
     """

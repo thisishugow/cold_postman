@@ -29,7 +29,11 @@ Control csv is the receiver list. Columns decribed as below:
 - `last_name`:  Last name of the receiver.
 - `email`:  Receiver's mail address.
 - `last_sent`: Timestamp of last contact.
-- `enabled`: (int) `[1, 0]`, `1`=*enabled*. `0`=*disabled*, which will be skiped while executing. 
+- `enabled`: (int) `[1, 0]`, `1`=*enabled*. `0`=*disabled*, which will be skiped while executing.  
+- `unsubscribe`:  
+  - `link`: The link for List-Unsubscibe.
+  - `subject`: The subject if is a mailto link.
+  - `message`: Default message of the mail.
 
 ### Send Mail
 Command to start the sending task: 
@@ -43,13 +47,17 @@ Command to start the sending task:
 #   -d CRMDB, --crmdb CRMDB
 #                         (Filepath) The file path of the crm DB.
 #   -m MESSAGE, --message MESSAGE
-#                         (Filepath) The email content in markdown.
+#                         (Filepath) REQUIRED. The email content in markdown.
 #   -t TITLE, --title TITLE
-#                         (str) The email title
+#                         (str) REQUIRED. The email title
 #   -s SIGNATURE, --signature SIGNATURE
-#                         (Filepath) The signature in markdown
+#                         (Filepath) REQUIRED. The signature in markdown
 #   -a ATTACH, --attach ATTACH
 #                         (Filepath) The attachment. 
+#   -u UNSUBSCRIBE, --unsubscribe UNSUBSCRIBE
+#                         (Bool) [True, False] Enable a unsubscribe link. Default=True
+#   -i INTERVAL, --interval INTERVAL
+#                         (Int) Interval (secs) between batchs. Default=10
 python -m cold_postman -m message.md -t 'Subject of the Mail' -s signature.md -a attachment.zip
 ```  
 

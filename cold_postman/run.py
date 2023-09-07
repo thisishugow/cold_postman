@@ -33,10 +33,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c','--config', help='(Filepath) The file path of the config.', default='config', required=False)
     parser.add_argument('-d','--crmdb', help='(Filepath) The file path of the crm DB.', default='cold_postman_db.csv', required=False)
-    parser.add_argument('-m','--message', help='(Filepath) The email content in markdown.', required=True)
-    parser.add_argument('-t','--title', help='(str) The email title', required=True)
-    parser.add_argument('-s','--signature', help='(Filepath) The signature in markdown', required=True)
+    parser.add_argument('-m','--message', help='(Filepath) REQUIRED. The email content in markdown.', required=True)
+    parser.add_argument('-t','--title', help='(str) REQUIRED. The email title', required=True)
+    parser.add_argument('-s','--signature', help='(Filepath) REQUIRED. The signature in markdown', required=True)
     parser.add_argument('-a','--attach', help='(Filepath) The attachment', required=False)
+    parser.add_argument('-u','--unsubscribe', help='(Bool) [True, False] Enable a unsubscribe link. Default=True', required=False, default=True)
+    parser.add_argument('-i','--interval', help='(Int) Interval (secs) between batchs. Default=10', required=False, default=10)
     args = parser.parse_args()
     config_fn, _ = os.path.splitext(args.config)
     config = read_conf(config_fn)
@@ -50,6 +52,9 @@ def main():
     cp.set_title(args.title)
     if args.attach:
         cp.set_attach(args.attach)
+    unsubscribe = False if str(args.unsubscribe).lower() == 'false' else True
+    cp.set_unsubscribe(unsubscribe)
+    cp.batch_interval = args.interval
     cp.run()
 
 if __name__ == '__main__':
