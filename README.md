@@ -21,6 +21,10 @@ smtp_port: 587 # port
 smtp_server: smtp.example.com # smtp server
 user: 'example@example.com' # user mail
 from: 'Mr.Example' 
+unsubscribe:
+  link: mailto:example@example.com # The link for List-Unsubscibe.
+  subject: Unsubscribe # The subject if is a mailto link.
+  message: I'd like to unsubscribe. # Default message of the mail.
 ```
 #### About `control csv`
 
@@ -30,10 +34,7 @@ Control csv is the receiver list. Columns decribed as below:
 - `email`:  Receiver's mail address.
 - `last_sent`: Timestamp of last contact.
 - `enabled`: (int) `[1, 0]`, `1`=*enabled*. `0`=*disabled*, which will be skiped while executing.  
-- `unsubscribe`:  
-  - `link`: The link for List-Unsubscibe.
-  - `subject`: The subject if is a mailto link.
-  - `message`: Default message of the mail.
+
 
 ### Send Mail
 Command to start the sending task: 
