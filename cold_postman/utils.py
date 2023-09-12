@@ -17,7 +17,8 @@ CONF_TEMPLATE = {
         'link':'',
         'subject':'Unsubscribe',
         'message':"I'd like to unsubscribe.",
-    }
+    },
+    'alter_name':''
 }
 
     

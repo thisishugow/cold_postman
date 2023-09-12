@@ -97,6 +97,8 @@ class ColdPostman:
         """start to send mail."""
         df: DataFrame = self.crm_db
         receivers = df[df["enabled"] == 1][["first_name", "last_name", "email"]]
+        receivers.first_name.fillna('', inplace=True)
+        receivers.last_name.fillna('', inplace=True)
         log.info(
             f"""Start to connect to: {self.config["smtp_server"]}:{self.config["smtp_port"]}"""
         )
@@ -138,7 +140,9 @@ class ColdPostman:
             self.msg_root["From"] = self.from_
             self.rtf = rtf
             first_name, last_name, email_addr = row
-            name = f"{first_name} {last_name}"
+            name = f"{first_name} {last_name}" 
+            if not name.replace(' ',''):
+                name = self.config['alter_name']
             _rtf: str = f"<br>Hi {name},<br><br>" + self.rtf
             log.debug(_rtf)
             # Set the unsubscribe link.

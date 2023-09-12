@@ -25,6 +25,7 @@ unsubscribe:
   link: mailto:example@example.com # The link for List-Unsubscibe.
   subject: Unsubscribe # The subject if is a mailto link.
   message: I'd like to unsubscribe. # Default message of the mail.
+alter_name: '' # The alternative name if blank in first_name + last_name. 
 ```
 #### About `control csv`
 
