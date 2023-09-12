@@ -15,6 +15,7 @@ import pendulum
 from pandas.core.frame import DataFrame
 
 from cold_postman import init_crmdb
+from cold_postman.utils import get_content_size_in_mb
 
 log = logging.getLogger()
 
@@ -92,6 +93,40 @@ class ColdPostman:
                 files,
             ]
         self.attachments = files
+    
+    def _handle_smtp(self)->smtplib.SMTP:
+        log.info(
+            f"""Start to connect to: {self.config["smtp_server"]}:{self.config["smtp_port"]}"""
+        )
+        smtp = smtplib.SMTP(self.config["smtp_server"], self.config["smtp_port"])
+        if not self._is_connected(smtp):
+            raise Exception('SMTP server connected failed.')
+        log.info(f"""Connected successfully. Login with user: {self.config['user']}""")
+        smtp.starttls()
+        smtp.login(self.config["user"], self.config["password"])
+        log.info(f"""Login successfully.""")
+        return smtp
+    
+    def _is_connected(self, server:smtplib.SMTP)->bool:
+        _code = server.ehlo()[0]
+        if _code == 250: 
+            return True
+        else:
+            return False
+
+    def _get_sending_limits_warning(self)->float:
+        res:float = 100.0
+        if 'sending_limits' in self.config.keys():
+            if 'warning' in self.config['sending_limits'].keys():
+                res = self.config['sending_limits']['warning']
+        return res
+    
+    def _get_sending_limits_pause(self)->float:
+        res:float = 290.0
+        if 'sending_limits' in self.config.keys():
+            if 'pause' in self.config['sending_limits'].keys():
+                res = self.config['sending_limits']['pause']
+        return res
 
     def run(self):
         """start to send mail."""
@@ -99,16 +134,7 @@ class ColdPostman:
         receivers = df[df["enabled"] == 1][["first_name", "last_name", "email"]]
         receivers.first_name.fillna('', inplace=True)
         receivers.last_name.fillna('', inplace=True)
-        log.info(
-            f"""Start to connect to: {self.config["smtp_server"]}:{self.config["smtp_port"]}"""
-        )
-        smtp = smtplib.SMTP(self.config["smtp_server"], self.config["smtp_port"])
-        if smtp.ehlo()[0] != 250:
-            raise Exception(f"SMTP Server responsed code: {smtp.ehlo()[0] }")
-        log.info(f"""Connected successfully. Login with user: {self.config['user']}""")
-        smtp.starttls()
-        smtp.login(self.config["user"], self.config["password"])
-        log.info(f"""Login successfully.""")
+        
         batch_cnt: int = 0
         update_states: list = []
         rtf: str = md(self.md_content) + self.signature
@@ -133,63 +159,87 @@ class ColdPostman:
             )
             attachments.append(add_file)
 
+        vol_warn:float = self._get_sending_limits_warning()
         # Start sending task.
-        for i, row in receivers.iterrows():
-            self.msg_root: MIMEMultipart = MIMEMultipart()
-            self.msg_root["Subject"] = self.title
-            self.msg_root["From"] = self.from_
-            self.rtf = rtf
-            first_name, last_name, email_addr = row
-            name = f"{first_name} {last_name}" 
-            if not name.replace(' ',''):
-                name = self.config['alter_name']
-            _rtf: str = f"<br>Hi {name},<br><br>" + self.rtf
-            log.debug(_rtf)
-            # Set the unsubscribe link.
-            if self.enable_unsubscribe:
-                _domain = "www." + re.sub(r".+@", "", self.config["user"])
-                self.msg_root.add_header("List-Unsubscribe", f"<{_domain}>")
-                self.msg_root.add_header(
-                    "List-Unsubscribe-Post", f"List-Unsubscribe=One-Click"
-                )
-                _rtf += f"""<br<br>To unsubscribe, click on the following link:
-                            <a style="color:#8B8C89" href="
-                            {self.config['unsubscribe']['link']}?
-                            subject={self.config['unsubscribe']['subject']}
-                            &body={self.config['unsubscribe']['message']}">
-                            <i>Unsubscribe</i></a><br>"""
-            msg_text = MIMEText(_rtf, "html")
-            self.msg_root.attach(msg_text)
+        try:
+            smtp:smtplib.SMTP = self._handle_smtp()
+            total_sent:float = 0.0
+            for i, row in receivers.iterrows():
+                # test connection. Prevent from connection closed while pursed too long.
+                if not self._is_connected(server=smtp):
+                    log.warning('Connection is closed. Trying to reconnect...')
+                    smtp = self._handle_smtp()
 
-            # Attach images
-            for j in image_cids:
-                _, _, img = j
-                self.msg_root.attach(img)
+                self.msg_root: MIMEMultipart = MIMEMultipart()
+                self.msg_root["Subject"] = self.title
+                self.msg_root["From"] = self.from_
+                self.rtf = rtf
+                first_name, last_name, email_addr = row
+                name = f"{first_name} {last_name}" 
+                if not name.replace(' ',''):
+                    name = self.config['alter_name']
+                _rtf: str = f"<br>Hi {name},<br><br>" + self.rtf
+                log.debug(_rtf)
+                # Set the unsubscribe link.
+                if self.enable_unsubscribe:
+                    _domain = "www." + re.sub(r".+@", "", self.config["user"])
+                    self.msg_root.add_header("List-Unsubscribe", f"<{_domain}>")
+                    self.msg_root.add_header(
+                        "List-Unsubscribe-Post", f"List-Unsubscribe=One-Click"
+                    )
+                    _rtf += f"""<br<br>To unsubscribe, click on the following link:
+                                <a style="color:#8B8C89" href="
+                                {self.config['unsubscribe']['link']}"""+\
+                                f"""?subject={self.config['unsubscribe']['subject']}"""+\
+                                f"""&body={self.config['unsubscribe']['message']}">"""+\
+                                f"""<i>Unsubscribe</i></a><br>"""
+                msg_text = MIMEText(_rtf, "html")
+                self.msg_root.attach(msg_text)
 
-            # Attach files
-            for add_file in attachments:
-                self.msg_root.attach(add_file)
+                # Attach images
+                for j in image_cids:
+                    _, _, img = j
+                    self.msg_root.attach(img)
 
-            self.msg_root["To"] = email_addr
-            self.msg_root[
-                "Reply-To"
-            ] = f"""{self.config['from']} <{self.config['user']}>"""
-            try:
-                smtp.sendmail(
-                    self.config["user"], email_addr, self.msg_root.as_string()
-                )
-            except Exception as e:
-                log.info(f"""Failed on '{name}'-'{email_addr}'.""")
-                log.error(e, exc_info=VERBOSE)
-                continue
-            batch_cnt += 1
-            update_states.append((i, pendulum.now()))
-            log.info(f"""Sent to '{name}'-'{email_addr}' successfully.""")
-            sleep(INTERVAL)  # rest for avoiding to be detected as DDos
-            if batch_cnt >= self.config["batch_num"]:
-                sleep(self.batch_interval)  # rest for avoiding to be detected as DDos
-        smtp.close()
-        self._update_crm(updates=update_states)
+                # Attach files
+                for add_file in attachments:
+                    self.msg_root.attach(add_file)
+
+                self.msg_root["To"] = email_addr
+                self.msg_root[
+                    "Reply-To"
+                ] = f"""{self.config['from']} <{self.config['user']}>"""
+                
+                try:
+                    _msg:str = self.msg_root.as_string()
+                    smtp.sendmail(
+                        self.config["user"], email_addr, _msg
+                    )
+                    log.info(f"""Sent to '{name}'-'{email_addr}' successfully.""")
+                    total_sent += get_content_size_in_mb(_msg)
+                    if total_sent >= vol_warn: 
+                        log.warning(f'Accumulated sent {round(total_sent,2)}MB.')
+                        vol_warn += self._get_sending_limits_warning() # next warn on 
+                except Exception as e:
+                    log.info(f"""Failed on '{name}'-'{email_addr}'.""")
+                    log.error(e, exc_info=VERBOSE)
+                    continue
+                batch_cnt += 1
+                update_states.append((i, pendulum.now()))
+                sleep(INTERVAL)  # rest for avoiding to be detected as DDos
+                if batch_cnt >= int(self.config["batch_num"]) \
+                    or total_sent >= self._get_sending_limits_pause():
+                    log.warning(f'Accumulated sent {round(total_sent,2)}MB.')
+                    log.info('>'*20 + f" Wait {self.batch_interval} secs "+'<'*20)
+                    sleep(int(self.batch_interval))  # rest for avoiding to be detected as DDos
+        except KeyboardInterrupt:
+            print('\n`Ctrl+C` detected. Program is terminating....')
+        except Exception as e:
+            log.error(e)
+        finally:
+            smtp.close()
+            self._update_crm(updates=update_states)
+            print('Exit.')
 
     def _read_crm(self, crm_db_path: os.PathLike) -> DataFrame:
         """_summary_

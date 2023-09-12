@@ -26,6 +26,9 @@ unsubscribe:
   subject: Unsubscribe # The subject if is a mailto link.
   message: I'd like to unsubscribe. # Default message of the mail.
 alter_name: '' # The alternative name if blank in first_name + last_name. 
+sending_limits: # [Optional], Volume of sending limits. Please refer to the smtp provider. 
+  warning: 100  # [Optional], Warn on every N MB has sent. Default=100.
+  pause: 280 # [Optional], paused job on N MB has sent. Defaul=290. 
 ```
 #### About `control csv`
 

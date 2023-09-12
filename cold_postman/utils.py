@@ -1,3 +1,4 @@
+import sys
 from typing import Literal, Union
 import yaml, json, logging
 import os
@@ -18,7 +19,11 @@ CONF_TEMPLATE = {
         'subject':'Unsubscribe',
         'message':"I'd like to unsubscribe.",
     },
-    'alter_name':''
+    'alter_name':'',
+    'sending_limits':{
+        'warning':100,
+        'pause': 290,
+    }
 }
 
     
@@ -45,6 +50,11 @@ def read_conf(fp:Union[str, bytes, os.PathLike], format:Literal['yaml', 'json']=
                 'link':'',
                 'subject':'Unsubscribe',
                 'message':"I'd like to unsubscribe.",
+            }
+            'alter_name':'',
+            'sending_limits':{
+                'warning':100,
+                'pause': 290,
             }
         }
         ```
@@ -102,4 +112,8 @@ def init_crmdb(fp:os.PathLike='cold_postman_db',astype:Literal['csv', 'sqlite']=
             df.to_sql('CRM', index=False, con=con, if_exists='replace')
         else:
             pd.DataFrame(d).to_sql('CRM', index=False, con=con, if_exists='append')
+
+
+def get_content_size_in_mb(obj)->float:
+    return sys.getsizeof(obj) / (1024 * 1024)
 
