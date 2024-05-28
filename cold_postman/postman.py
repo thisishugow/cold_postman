@@ -33,6 +33,7 @@ class ColdPostman:
         """
         self.title: str = None
         self.md_content: str = None
+        self.html_content: str = None
         self.config: dict = config
         self.crm_db_path: os.PathLike = crm_db_path
         self.crm_db: DataFrame = self._read_crm(crm_db_path)
@@ -78,6 +79,14 @@ class ColdPostman:
             md_content (str): the content in markdown.
         """
         self.md_content = md_content
+
+    def set_html_content(self, html_content: str):
+        """Set the markdown content. The method will transform it and set to mail's rtf
+
+        Args:
+            md_content (str): the content in markdown.
+        """
+        self.html_content = html_content
 
     def set_from_(self, alias: str):
         """Set the sendor alias
@@ -137,8 +146,12 @@ class ColdPostman:
         
         batch_cnt: int = 0
         update_states: list = []
-        rtf: str = md(self.md_content) + self.signature
-        image_dict = extract_images_from_md(self.md_content + self._md_signature)
+        image_dict = {}
+        if self.md_content:
+            rtf: str = md(self.md_content) + self.signature
+            image_dict = extract_images_from_md(self.md_content + self._md_signature)
+        elif self.html_content:
+            rtf:str = self.html_content + self.signature
         log.debug(image_dict)
         image_cids: list = []
         for cid, url in image_dict.items():

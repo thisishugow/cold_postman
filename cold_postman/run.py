@@ -33,7 +33,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c','--config', help='(Filepath) The file path of the config.', default='config', required=False)
     parser.add_argument('-d','--crmdb', help='(Filepath) The file path of the crm DB.', default='cold_postman_db.csv', required=False)
-    parser.add_argument('-m','--message', help='(Filepath) REQUIRED. The email content in markdown.', required=True)
+    parser.add_argument('-m','--message', help='(Filepath) REQUIRED. The email content in markdown/html.', required=True)
     parser.add_argument('-t','--title', help='(str) REQUIRED. The email title', required=True)
     parser.add_argument('-s','--signature', help='(Filepath) REQUIRED. The signature in markdown', required=True)
     parser.add_argument('-a','--attach', help='(Filepath) The attachment', required=False)
@@ -47,7 +47,15 @@ def main():
     with open(args.signature, 'r') as f:
         signature = f.read()
     cp = ColdPostman(crm_db_path=args.crmdb, config=config)
-    cp.set_md_content(message)
+    _, extname = os.path.splitext(args.message)
+    if extname.lower() == '.html':
+        cp.set_html_content(message)
+    elif extname.lower() == '.md':
+        cp.set_md_content(message)
+    else:
+        _msg = "⚠️ WARNING: Message must be a file of .html or .md"
+        print( '\x1b[33;20m' + _msg + '\x1b[0m')
+        sys.exit(1)
     cp.set_signature(signature)
     cp.set_title(args.title)
     if args.attach:
